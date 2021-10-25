@@ -9,9 +9,6 @@ COPY authentication/models.py ./models.py
 COPY authentication/adminDecorater.py ./adminDecorater.py
 COPY authentication/requirements.txt ./requirements.txt
 
-
 RUN pip install -r ./requirements.txt
 
-# ENTRYPOINT ["echo", "hello world"]
-# ENTRYPOINT ["sleep", "1200"]
 ENTRYPOINT ["python", "./application.py"]

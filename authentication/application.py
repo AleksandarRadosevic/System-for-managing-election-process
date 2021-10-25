@@ -6,7 +6,7 @@ from re import match,search;
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, create_refresh_token, get_jwt, get_jwt_identity;
 from sqlalchemy import and_;
 from adminDecorater import roleCheck;
-
+import re;
 
 application=Flask(__name__);
 application.config.from_object(Configuration);
@@ -97,35 +97,35 @@ def register():
     password=request.json.get("password","");
 
     if (len(jmbg)==0):
-        return Response("Field jmbg is missing",status=400);
+        return jsonify({'message': 'Field jmbg is missing.'}), 400;
     elif (len(forename)==0):
-        return Response("Field forename is missing",status=400);
+        return jsonify({'message': 'Field forename is missing.'}), 400;
     elif (len(surname)==0):
-        return Response("Field surname is missing",status=400);
+        return jsonify({'message': 'Field surname is missing.'}), 400;
     elif (len(email)==0):
-        return Response("Field email is missing",status=400);
+        return jsonify({'message': 'Field email is missing.'}), 400;
     elif (len(password)==0):
-        return Response("Field password is missing",status=400);
+        return jsonify({'message': 'Field password is missing.'}), 400;
 
     #check for valid jmbg
     if (is_valid_jmbg(jmbg)==False):
-        return Response("Invalid jmbg.");
+        return jsonify({'message': 'Invalid jmbg.'}), 400;
 
     #check for valid email
-    result = parseaddr ( email );
-    if ( len ( result[1] ) == 0 or len(email)>256):
-        return Response ( "Invalid email.", status = 400 );
+
+    if (re.match('[^@]+@.*\.[a-z]{2,}$',email) is None or len(email)>256):
+        return jsonify({'message': 'Invalid email.'}), 400;
 
     #check for valid password
     passValid=is_valid_password(password);
     if (passValid==False):
-        return Response("Invalid password",status=400);
+        return jsonify({'message': 'Invalid password.'}), 400;
 
     #check if someone has this mail
     if (User.query.filter(User.email==email).first() is not None):
-        return Response ( "Email already exists.", status = 400 );
+        return jsonify({'message': 'Email already exists.'}), 400;
     elif (User.query.filter(User.jmbg==jmbg).first() is not None):
-        return Response("JMBG alreay exists.",status=400);
+        return jsonify({'message': 'JMBG already exists.'}), 400;
     user=User(email=email,forename=forename,surname=surname,password=password,jmbg=jmbg);
     database.session.add(user);
     database.session.commit();
@@ -140,6 +140,7 @@ jwt=JWTManager(application);
 
 @application.route("/login",methods=["POST"])
 def login():
+
     email=request.json.get("email","");
     password=request.json.get("password","");
 
@@ -147,32 +148,32 @@ def login():
     passwordEmpty = len(password) == 0;
 
     if (emailEmpty):
-        return Response("Field email is empty ",status=400);
+        return jsonify({'message': 'Field email is missing.'}), 400;
     elif (passwordEmpty):
-        return Response("Field password is empty",status=400);
+        return jsonify({'message': 'Field password is missing.'}), 400;
 
-    result = parseaddr ( email );
-    if ( len ( result[1] ) == 0 or len(email)>256):
-        return Response ( "Invalid email.", status = 400 );
+    if (re.match('[^@]+@.*\.[a-z]{2,}$',email) is None or len(email)>256):
+        return jsonify({'message': 'Invalid email.'}), 400;
 
     user=User.query.filter(and_(User.email==email,User.password==password)).first();
     if (not user):
-        return Response("Invalid credentials!",status=400);
+        return jsonify({'message': 'Invalid credentials.'}), 400;
 
     additionalClaims = {
             "forename": user.forename,
             "surname": user.surname,
-            "roles": [ str ( role ) for role in user.roles ]
+            "roles": [ str ( role ) for role in user.roles ],
+            "jmbg":user.jmbg
     }
 
     accessToken = create_access_token ( identity = user.email, additional_claims = additionalClaims );
     refreshToken = create_refresh_token ( identity = user.email, additional_claims = additionalClaims );
 
     # return Response ( accessToken, status = 200 );
-    return jsonify ( accessToken = accessToken, refreshToken = refreshToken );
+    return jsonify ( accessToken = accessToken, refreshToken = refreshToken ),200;
 
 @application.route("/refresh",methods=["POST"])
-@jwt_required()
+@jwt_required(refresh=True)
 def refresh():
     identity=get_jwt_identity();
     refreshClaims=get_jwt();
@@ -183,25 +184,31 @@ def refresh():
         "surname":refreshClaims["surname"],
         "roles":refreshClaims["roles"]
     };
-    return Response(create_access_token(identity=identity,additional_claims=additionalCLaims),200);
+
+    return jsonify(accessToken= create_access_token(identity=identity,additional_claims=additionalCLaims)),200;
 
 
 @application.route("/delete",methods=["POST"])
-@roleCheck(role="admin")
+@roleCheck(role="administrator")
 def delete():
-    email=request.json.get("email","");
-    if not email:
+    try:
+        email=request.json.get("email","");
+    except:
         return jsonify({'message': 'Field email is missing.'}), 400;
 
-    result = parseaddr(email);
-    if (len(result[1]) == 0 or len(email) > 256):
+    if len(email)==0:
+        return jsonify({'message': 'Field email is missing.'}), 400;
+
+    if (re.match('[^@]+@.*\.[a-z]{2,}$',email) is None or len(email)>256):
         return jsonify({'message': 'Invalid email.'}), 400;
 
 
     user=User.query.filter(User.email==email).first();
-    if (not user):
-        return jsonify({'message': 'Unkown user.'}), 400;
+    if (user is None):
+        return jsonify({'message': 'Unknown user.'}), 400;
 
+    userRole=UserRole.query.filter(UserRole.userId==user.id).first();
+    database.session.delete(userRole);
     database.session.delete(user);
     database.session.commit();
     return Response(status=200);
@@ -214,4 +221,4 @@ def index():
 
 if (__name__=="__main__"):
     database.init_app(application);
-    application.run ( debug = True, host = "0.0.0.0", port = 5002 );
+    application.run ( host = "0.0.0.0", port = 5002 );

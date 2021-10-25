@@ -1,0 +1,113 @@
+version: '3'
+
+services:
+  authenticationDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 10
+    volumes:
+    - dbauthenticationdata:/var/lib/mysql
+    networks:
+      - authenticationnet
+  authenticationDBMigration:
+    image: authenticationdbmigration
+    environment:
+      - DATABASE_URL=authenticationDB
+    depends_on:
+      authenticationDB:
+        condition: service_healthy
+    networks:
+        - authenticationnet
+  authentication:
+    image: authentication
+    environment:
+      - DATABASE_URL=authenticationDB
+    depends_on:
+      - authenticationDBMigration
+    ports:
+      - 5002:5002
+    networks:
+      - authenticationnet
+
+
+  electionsDB:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+    volumes:
+      - dbelectionsdata:/var/lib/mysql
+    networks:
+      - electionnet
+
+  electionDBmigration:
+    image: electiondbmigration
+    environment:
+      - DATABASE_URL=electionsDB
+    depends_on:
+      electionsDB:
+        condition: service_healthy
+    networks:
+      - electionnet
+
+  administrator:
+    image: administrator
+    environment:
+      - DATABASE_URL=electionsDB
+    depends_on:
+      - electionDBmigration
+    ports:
+      - 5001:5001
+    networks:
+      - electionnet
+
+  redis:
+    image: redis
+    networks:
+      - redisnet
+
+  voting:
+    image: voting
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    ports:
+      - 5003:5003
+    networks:
+      - redisnet
+
+  dameon:
+    image: dameon
+    environment:
+      - DATABASE_URL=electionsDB
+      - REDIS_HOST=redis
+    depends_on:
+      - electionDBmigration
+      - redis
+    networks:
+      - electionnet
+      - redisnet
+
+  adminer:
+    image: adminer
+    ports:
+      - 8080:8080
+    networks:
+      - authenticationnet
+      - electionnet
+
+volumes:
+  dbauthenticationdata:
+  dbelectionsdata:
+networks:
+  authenticationnet:
+  electionnet:
+  redisnet:

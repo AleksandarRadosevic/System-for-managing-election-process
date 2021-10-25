@@ -11,7 +11,7 @@ def roleCheck ( role ):
             if ( ( "roles" in claims ) and ( role in claims["roles"] ) ):
                 return function ( *arguments, **keywordArguments );
             else:
-                return Response ( "permission denied!", status = 403 );
+                return Response ( "permission denied!", status = 401 );
 
         return decorator;
 

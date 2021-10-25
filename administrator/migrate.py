@@ -1,7 +1,7 @@
 from flask import Flask;
 from configuration import Configuration;
 from flask_migrate import Migrate,init,migrate,upgrade;
-from models import database,Role,User,UserRole;
+from models import database,Vote,Election,Participant,ElectionParticipant;
 from sqlalchemy_utils import database_exists,create_database;
 
 
@@ -23,36 +23,16 @@ while not done:
             init();
             migrate(message="Production migration");
             upgrade();
-            UserRole.query.delete();
+            Vote.query.delete();
             database.session.commit();
-            Role.query.delete();
+            ElectionParticipant.query.delete();
             database.session.commit();
-            User.query.delete();
+            Participant.query.delete();
             database.session.commit();
-
-            adminRole=Role(name="administrator");
-            userRole=Role(name="zvanicnik");
-
-            database.session.add(adminRole);
-            database.session.add(userRole);
-
+            Election.query.delete();
             database.session.commit();
 
-            admin=User(
-                jmbg="0000000000000",
-                forename="admin",
-                surname="admin",
-                email="admin@admin.com",
-                password="1"
-        );
-            database.session.add(admin);
-            database.session.commit();
-            userRole=UserRole(
-                userId=admin.id,
-                roleId=adminRole.id
-        );
-            database.session.add(userRole);
-            database.session.commit();
             done = True;
+			
     except Exception as error:
         print(error);

@@ -1,0 +1,9 @@
+Pokretanje testa:
+python main.py --type all --authentication-address http://127.0.0.1:5002 --jwt-secret JWT_SECRET_KEY --roles-field roles --administrator-role administrator --user-role zvanicnik --administrator-address http://127.0.0.1:5001 --station-address http://127.0.0.1:5003 --with-authentication
+
+PowerShell:
+docker swarm init
+cp D:\Desktop\iepProjekat\iepProjekat\stack.yaml stack.yaml
+cat stack.yaml
+docker stack deploy --compose-file stack.yaml mojStek
+docker swarm leave --force

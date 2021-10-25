@@ -12,6 +12,7 @@ class ElectionParticipant(database.Model):
     result=database.Column(database.Integer,nullable=True);
     poolNumber=database.Column(database.Integer,nullable=False);
 
+
 class Participant(database.Model):
     __tablename__="participants";
 
@@ -38,12 +39,11 @@ class Election(database.Model):
     votes = database.relationship("Vote", back_populates="election");
     votesNumber=database.Column(database.Integer,nullable=False);
 
-
     def to_JSON(self):
         return {
             'id': self.id,
-            'start': str(self.start),
-            'end': str(self.end),
+            'start': self.start,
+            'end': self.end,
             'individual': self.individual,
             'participants':[
                 {'id':participant.id, 'name':participant.name} for participant in self.participants
